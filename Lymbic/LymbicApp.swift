@@ -6,18 +6,22 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct LymbicApp: App {
     var body: some Scene {
         WindowGroup {
 #if os(iOS)
-            ContentView()
+            iOS_ContentView()
+                .withAppLifecycleObserver()
 #elseif os(macOS)
             macOS_ContentView()
+                .withAppLifecycleObserver()
 #else
             Text("지원하지 않는 플랫폼")
 #endif
         }
+        .modelContainer(for: ClipboardItem.self)
     }
 }

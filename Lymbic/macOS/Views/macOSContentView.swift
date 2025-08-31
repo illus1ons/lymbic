@@ -17,6 +17,9 @@ struct macOS_ContentView: View {
                 NavigationLink(destination: PinnedItemsView()) {
                     Label("핀됨", systemImage: "pin")
                 }
+                NavigationLink(destination: SettingsView()) {
+                    Label("설정", systemImage: "gear")
+                }
             }
             .listStyle(SidebarListStyle())
             

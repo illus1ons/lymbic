@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct iOS_ContentView: View {
+    @Environment(\.modelContext) private var context
+    
     var body: some View {
         TabView {
             ClipboardHistoryView()
