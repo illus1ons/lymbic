@@ -1,12 +1,7 @@
-//
-//  ClipboardHistoryView.swift
-//  Lymbic
-//
-//  Created by 유영배 on 8/31/25.
-//
-
 import SwiftUI
 import SwiftData
+
+// MARK: - Main View
 
 struct ClipboardHistoryView: View {
     @Environment(\.modelContext) private var context
@@ -18,32 +13,27 @@ struct ClipboardHistoryView: View {
     var body: some View {
         NavigationStack {
             List {
-                // 📌 핀된 항목 섹션
-                Section("📌 핀된 항목 (\(pinnedItems.count))") {
-                    if pinnedItems.isEmpty {
-                        Text("고정된 항목 없음")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(pinnedItems) { item in
-                            ClipboardItemView(item: item, isCardStyle: false)
-                                .swipeActions(edge: .leading) {
-                                    Button {
-                                        togglePin(item)
-                                    } label: {
-                                        Label("Unpin", systemImage: "pin.slash.fill")
-                                    }
-                                    .tint(.orange)
+                // 📌 핀된 항목 섹션 (가로 스크롤)
+                if !pinnedItems.isEmpty {
+                    Section("📌 핀된 항목 (\(pinnedItems.count))") {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            LazyHStack(spacing: 12) {
+                                ForEach(pinnedItems) { item in
+                                    PinnedItemCard(item: item)
+                                        .contextMenu {
+                                            contextMenuItems(for: item)
+                                        }
                                 }
-                                .swipeActions(edge: .trailing) {
-                                    copyButton(for: item)
-                                    deleteButton(for: item)
-                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 4)
                         }
+                        .listRowInsets(EdgeInsets())
                     }
                 }
                 
                 // 🕐 최근 항목 섹션
-                Section("🕐 최근 항목 (\(recentItems.count))") {
+                Section(header: recentItemsHeader) {
                     if recentItems.isEmpty {
                         Text("최근 항목 없음")
                             .foregroundStyle(.secondary)
@@ -51,11 +41,7 @@ struct ClipboardHistoryView: View {
                         ForEach(recentItems) { item in
                             ClipboardItemView(item: item, isCardStyle: false)
                                 .swipeActions(edge: .leading) {
-                                    Button {
-                                        togglePin(item)
-                                    } label: {
-                                        Label("Pin", systemImage: "pin.fill")
-                                    }.tint(.orange)
+                                    pinButton(for: item)
                                 }
                                 .swipeActions(edge: .trailing) {
                                     copyButton(for: item)
@@ -74,26 +60,77 @@ struct ClipboardHistoryView: View {
             }
         }
     }
+    
+    // MARK: - View Components
+    
+    @ViewBuilder
+    private var recentItemsHeader: some View {
+        // 핀된 항목이 있을 때만 최근 항목 개수를 표시하여 깔끔하게 보이도록 함
+        if pinnedItems.isEmpty {
+            Text("🕐 최근 항목")
+        } else {
+            Text("🕐 최근 항목 (\(recentItems.count))")
+        }
+    }
+    
+    @ViewBuilder
+    private func contextMenuItems(for item: ClipboardItem) -> some View {
+        Button("복사", systemImage: "doc.on.doc") {
+            copyToClipboard(item)
+        }
+        Button("핀 해제", systemImage: "pin.slash") {
+            togglePin(item)
+        }
+        Divider()
+        Button("삭제", systemImage: "trash", role: .destructive) {
+            deleteItem(item)
+        }
+    }
+    
+    @ViewBuilder
+    private func pinButton(for item: ClipboardItem) -> some View {
+        Button {
+            togglePin(item)
+        } label: {
+            Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.slash.fill" : "pin.fill")
+        }.tint(.orange)
+    }
+    
+    @ViewBuilder
+    private func copyButton(for item: ClipboardItem) -> some View {
+        Button {
+            copyToClipboard(item)
+        } label: {
+            Label("Copy", systemImage: "doc.on.doc")
+        }.tint(.blue)
+    }
+    
+    @ViewBuilder
+    private func deleteButton(for item: ClipboardItem) -> some View {
+        Button(role: .destructive) {
+            deleteItem(item)
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+    }
+
+    // MARK: - Actions
 
     private func togglePin(_ item: ClipboardItem) {
         item.isPinned.toggle()
-        do {
-            try context.save()
-        } catch {
-            // Handle the error appropriately.
-            print("Failed to save context after toggling pin: \(error)")
-            // Optionally, revert the change in memory if the save fails.
-            item.isPinned.toggle()
-        }
+        saveContext()
     }
 
     private func deleteItem(_ item: ClipboardItem) {
         context.delete(item)
+        saveContext()
+    }
+    
+    private func saveContext() {
         do {
             try context.save()
         } catch {
-            // Handle the error appropriately.
-            print("Failed to save context after deletion: \(error)")
+            print("⚠️ Failed to save context: \(error)")
         }
     }
     
@@ -118,37 +155,84 @@ struct ClipboardHistoryView: View {
                 pasteboard.setString(content, forType: .string)
             }
         case .image:
-            // NSPasteboard doesn't directly take Data for an image.
-            // You might need to create an NSImage first.
             if let data = item.imageData, let image = NSImage(data: data) {
                 pasteboard.writeObjects([image])
             }
         }
         #endif
     }
+}
+
+// MARK: - Pinned Item Card View
+
+private struct PinnedItemCard: View {
+    let item: ClipboardItem
     
-    @ViewBuilder
-    private func copyButton(for item: ClipboardItem) -> some View {
-        Button {
-            copyToClipboard(item)
-        } label: {
-            Label("Copy", systemImage: "doc.on.doc")
-        }.tint(.blue)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // 1. Header: Icon & Content Type
+            HStack {
+                Image(systemName: item.contentType.iconName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(item.contentType.rawValue.capitalized)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            
+            // 2. Content
+            if item.contentType == .image, let data = item.imageData {
+                Image(uiImage: UIImage(data: data) ?? UIImage(systemName: "photo")!)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                Text(item.content ?? "")
+                    .font(.system(.body, design: .monospaced))
+                    .lineLimit(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(width: 180, height: 120)
+        .background(DesignSystem.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
     }
-    
-    @ViewBuilder
-    private func deleteButton(for item: ClipboardItem) -> some View {
-        Button(role: .destructive) {
-            deleteItem(item)
-        } label: {
-            Label("Delete", systemImage: "trash")
+}
+
+private extension ClipboardContentType {
+    var iconName: String {
+        switch self {
+        case .text: return "text.quote"
+        case .url: return "link"
+        case .image: return "photo"
+        case .otp: return "key.radiowaves.forward"
         }
     }
 }
 
+// MARK: - Preview
+
 struct ClipboardHistoryView_Previews: PreviewProvider {
-    static var previews: some View {
-        ClipboardHistoryView()
-            .modelContainer(for: ClipboardItem.self, inMemory: true)
+    @MainActor static var previews: some View {
+        let container = try! ModelContainer(for: ClipboardItem.self, configurations: .init(isStoredInMemoryOnly: true))
+        
+        // Sample Data
+        let sampleItems = [
+            ClipboardItem(content: "https://google.com", contentType: .url, isPinned: true),
+            ClipboardItem(content: "This is a pinned text snippet for preview.", contentType: .text, isPinned: true),
+            ClipboardItem(content: "Another one.", contentType: .text, isPinned: true),
+            ClipboardItem(content: "Recent item 1", contentType: .text),
+            ClipboardItem(content: "Recent item 2", contentType: .text)
+        ]
+        sampleItems.forEach { container.mainContext.insert($0) }
+        
+        return ClipboardHistoryView()
+            .modelContainer(container)
     }
 }

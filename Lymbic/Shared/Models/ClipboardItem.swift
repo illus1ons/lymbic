@@ -43,6 +43,9 @@ final class ClipboardItem {
     /// 사용자 고정 여부 (핀)
     var isPinned: Bool
     
+    /// 스마트 분석을 통해 감지된 콘텐츠 타입
+    var smartContentType: SmartContentType?
+    
     /// 원본이 생성된 디바이스 정보
     var sourceDevice: String?
     
@@ -51,6 +54,7 @@ final class ClipboardItem {
         content: String? = nil,
         imageData: Data? = nil,
         contentType: ClipboardContentType,
+        smartContentType: SmartContentType? = nil, // 옵셔널로 변경
         createdAt: Date = Date(),
         expiresAt: Date? = nil,
         isPinned: Bool = false,
@@ -60,6 +64,7 @@ final class ClipboardItem {
         self.content = content
         self.imageData = imageData
         self.contentType = contentType
+        self.smartContentType = smartContentType
         self.createdAt = createdAt
         self.expiresAt = expiresAt
         self.isPinned = isPinned

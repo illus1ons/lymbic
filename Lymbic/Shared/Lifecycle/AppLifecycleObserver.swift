@@ -36,53 +36,66 @@ struct AppLifecycleObserver: ViewModifier {
     // MARK: - Actions
     
     private func checkClipboard() {
-        let content: (String?, Data?, ClipboardContentType)? = { 
-            #if os(iOS)
-            let pasteboard = UIPasteboard.general
-            if let string = pasteboard.string {
-                return (string, nil, .text)
-            } else if let url = pasteboard.url {
-                return (url.absoluteString, nil, .url)
-            } else if let image = pasteboard.image {
-                return (nil, image.pngData(), .image)
-            }
-            #elseif os(macOS)
-            let pasteboard = NSPasteboard.general
-            if let string = pasteboard.string(forType: .string) {
-                 // TODO: Add better URL detection if needed
-                return (string, nil, string.contains("://") ? .url : .text)
-            }
-            // Reading image data from macOS pasteboard can be more complex
-            // and might involve checking pasteboard.types
-            #endif
-            return nil
-        }()
-        
-        if let (contentString, contentData, contentType) = content {
-            // Avoid adding duplicate content
-            let newItem = ClipboardItem(content: contentString, imageData: contentData, contentType: contentType)
-            do {
-                let fetchDescriptor = FetchDescriptor<ClipboardItem>()
-                let allItems = try context.fetch(fetchDescriptor)
-                
-                let isDuplicate = allItems.contains { item in
-                    if let contentString = contentString, !contentString.isEmpty, item.content == contentString {
-                        return true
-                    }
-                    if let contentData = contentData, item.imageData == contentData {
-                        return true
-                    }
-                    return false
+        // 1. 클립보드에서 현재 내용 가져오기
+        guard let (clipboardString, clipboardData, contentType) = getCurrentClipboardContent() else { return }
+
+        do {
+            // 2. 가장 최근 항목 1개만 가져오도록 FetchDescriptor 설정
+            var descriptor = FetchDescriptor<ClipboardItem>()
+            descriptor.sortBy = [SortDescriptor(\.createdAt, order: .reverse)]
+            descriptor.fetchLimit = 1
+
+            // 3. 가장 최근 항목 조회
+            let mostRecentItem = try context.fetch(descriptor).first
+
+            // 4. 가장 최근 항목과 현재 클립보드 내용 비교
+            var isDuplicateOfLast = false
+            if let lastItem = mostRecentItem {
+                let stringsMatch = (clipboardString != nil && clipboardString == lastItem.content)
+                let dataMatch = (clipboardData != nil && clipboardData == lastItem.imageData)
+                if stringsMatch || dataMatch {
+                    isDuplicateOfLast = true
                 }
-                
-                if !isDuplicate {
-                    context.insert(newItem)
-                }
-            } catch {
-                print("Failed to check for duplicates: \(error)")
-                context.insert(newItem) // Insert anyway if check fails
             }
+
+            // 5. 가장 최근 항목과 중복되지 않을 경우에만 추가
+            if !isDuplicateOfLast {
+                // 스마트 타입 감지
+                let smartType = SmartDetectionService.detect(from: clipboardString ?? "")
+                
+                let newItem = ClipboardItem(
+                    content: clipboardString, 
+                    imageData: clipboardData, 
+                    contentType: contentType, 
+                    smartContentType: smartType
+                )
+                context.insert(newItem)
+            }
+        } catch {
+            print("⚠️ Failed to fetch recent item to check for duplicates: \(error)")
         }
+    }
+    
+    private func getCurrentClipboardContent() -> (String?, Data?, ClipboardContentType)? {
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        if let string = pasteboard.string {
+            // Basic URL detection
+            let isURL = string.lowercased().hasPrefix("http://") || string.lowercased().hasPrefix("https://")
+            return (string, nil, isURL ? .url : .text)
+        } else if let image = pasteboard.image {
+            return (nil, image.pngData(), .image)
+        }
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        if let string = pasteboard.string(forType: .string) {
+             // Basic URL detection
+            let isURL = string.lowercased().hasPrefix("http://") || string.lowercased().hasPrefix("https://")
+            return (string, nil, isURL ? .url : .text)
+        }
+        // Reading image data from macOS pasteboard can be more complex
+        #endif
+        return nil
     }
     
     private func autoDeleteExpiredItems() {

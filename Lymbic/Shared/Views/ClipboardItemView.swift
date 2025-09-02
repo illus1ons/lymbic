@@ -87,6 +87,12 @@ struct ClipboardItemView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                
+                // 스마트 액션 버튼 표시
+                if let smartType = item.smartContentType, smartType != .none {
+                    smartActionsView(for: item, type: smartType)
+                        .padding(.top, 4)
+                }
             }
             
             if item.isPinned {
@@ -103,5 +109,49 @@ struct ClipboardItemView: View {
                 : AnyShape(Rectangle())
         )
 
+    }
+    
+    @ViewBuilder
+    private func smartActionsView(for item: ClipboardItem, type: SmartContentType) -> some View {
+        // 스마트 액션 버튼들을 가로로 나열
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+                switch type {
+                case .email:
+                    if let email = item.content {
+                        Button("메일 보내기", systemImage: "envelope") {
+                            // Action: open mail client
+                        }
+                        Button("주소 복사", systemImage: "doc.on.doc") {
+                            // Action: copy email address
+                        }
+                    }
+                case .phoneNumber:
+                    if let number = item.content {
+                        Button("전화 걸기", systemImage: "phone") {
+                            // Action: initiate call
+                        }
+                        Button("메시지 보내기", systemImage: "message") {
+                            // Action: open messages app
+                        }
+                    }
+                case .url:
+                    if let urlString = item.content, let url = URL(string: urlString) {
+                        Button("URL 열기", systemImage: "safari") {
+                            // Action: open URL
+                        }
+                        Button("QR 코드 생성", systemImage: "qrcode") {
+                            // Action: generate QR code
+                        }
+                    }
+                case .none:
+                    // 아무것도 표시하지 않음
+                    EmptyView()
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .scrollClipDisabled() // iOS 17+
     }
 }
