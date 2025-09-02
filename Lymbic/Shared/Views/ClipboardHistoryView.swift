@@ -30,14 +30,19 @@ struct ClipboardHistoryView: View {
                             .padding(.vertical, 4)
                         }
                         .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear) // 행 배경 투명화
                     }
                 }
                 
                 // 🕐 최근 항목 섹션
                 Section(header: recentItemsHeader) {
                     if recentItems.isEmpty {
-                        Text("최근 항목 없음")
-                            .foregroundStyle(.secondary)
+                        ContentUnavailableView(
+                            "클립보드가 비어있습니다",
+                            systemImage: "doc.on.clipboard",
+                            description: Text("다른 기기에서 복사하거나 앱 내에서 직접 추가한 항목이 여기에 표시됩니다."))
+                        .padding(.vertical, 40)
+                        .listRowBackground(Color.clear) // 행 배경 투명화
                     } else {
                         ForEach(recentItems) { item in
                             ClipboardItemView(item: item, isCardStyle: false)
@@ -48,15 +53,18 @@ struct ClipboardHistoryView: View {
                                     copyButton(for: item)
                                     deleteButton(for: item)
                                 }
+                                .listRowBackground(Color.clear) // 행 배경 투명화
                         }
                     }
                 }
             }
+            .scrollContentBackground(.hidden) // iOS 16+ 리스트 배경 투명화
+            .background(Color.primaryBackground) // 리스트 전체 배경
             .navigationTitle("클립보드 히스토리")
             .toolbar {
                 ToolbarItemGroup(placement: .automatic) {
-                    Button(action: {}) { Image(systemName: "magnifyingglass") }
-                    Button(action: {}) { Image(systemName: "camera") }
+                    Button(action: {}) { Image(systemName: "magnifyingglass") }.buttonStyle(DesignSystem.toolbarButton())
+                    Button(action: {}) { Image(systemName: "camera") }.buttonStyle(DesignSystem.toolbarButton())
                 }
             }
         }
@@ -150,12 +158,12 @@ private struct PinnedItemCard: View {
         VStack(alignment: .leading, spacing: 8) {
             // 1. Header: Icon & Content Type
             HStack {
-                Image(systemName: item.contentType.iconName)
+                                Image(systemName: item.contentType.iconName)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textColorSecondary)
                 Text(item.contentType.rawValue.capitalized)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.textColorSecondary)
                 Spacer()
             }
             
@@ -183,30 +191,19 @@ private struct PinnedItemCard: View {
                     .font(.system(.body, design: .monospaced))
                     .lineLimit(4)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundColor(.textColorPrimary)
             }
             
             Spacer(minLength: 0)
         }
         .padding(12)
         .frame(width: 180, height: 120)
-        .background(DesignSystem.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
+        .modifier(DesignSystem.cardModifier()) // DesignSystem의 카드 스타일 적용
     }
 }
 
-private extension SmartContentType {
-    var iconName: String {
-        switch self {
-        case .none: return "text.quote"
-        case .url: return "link"
-        case .email: return "envelope"
-        case .phoneNumber: return "phone"
-        }
-    }
-}
 
-// MARK: - Preview
+// MARK: - 미리보기
 
 struct ClipboardHistoryView_Previews: PreviewProvider {
     @MainActor static var previews: some View {

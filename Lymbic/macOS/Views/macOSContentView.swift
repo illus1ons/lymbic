@@ -48,13 +48,14 @@ struct macOSContentView: View {
                 // --- 상태 바 (하단) ---
                 statusBar
             }
+            .background(Color.primaryBackground) // macOS 상세 뷰 배경
         }
         .navigationTitle("Ephemeral Clipboard")
         .toolbar {
             ToolbarItemGroup {
-                Button(action: {}) { Label("검색", systemImage: "magnifyingglass") }
-                Button(action: {}) { Label("라이브 텍스트", systemImage: "camera") }
-                Button(action: {}) { Label("설정", systemImage: "gear") }
+                Button(action: {}) { Label("검색", systemImage: "magnifyingglass") }.buttonStyle(DesignSystem.toolbarButton())
+                Button(action: {}) { Label("라이브 텍스트", systemImage: "camera") }.buttonStyle(DesignSystem.toolbarButton())
+                Button(action: {}) { Label("설정", systemImage: "gear") }.buttonStyle(DesignSystem.toolbarButton())
             }
         }
     }
@@ -96,11 +97,12 @@ struct macOSContentView: View {
                 if let date = item.expiresAt {
                     CountdownBadge(expirationDate: date)
                 } else {
-                    Text("-").foregroundColor(.secondary)
+                    Text("-").foregroundColor(Color.textColorSecondary)
                 }
             }
             .width(min: 80, ideal: 90)
         }
+        .scrollContentBackground(.hidden) // macOS 13+ 리스트 배경 투명화
     }
     
     private var statusBar: some View {
@@ -110,7 +112,7 @@ struct macOSContentView: View {
             Text("동기화 상태: 정상")
         }
         .padding(8)
-        .background(Material.ultraThin)
+        .background(Color.primaryBackground) // 상태 바 배경
     }
 }
 

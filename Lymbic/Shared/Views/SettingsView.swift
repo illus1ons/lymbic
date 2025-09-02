@@ -67,7 +67,15 @@ struct SettingsView: View {
                 profileSection
                 appInfoSection
             }
+            .scrollContentBackground(.hidden) // iOS 16+ 폼 배경 투명화
+            .background(Color.primaryBackground) // 폼 전체 배경
             .navigationTitle("설정")
+            .toolbar {
+                ToolbarItemGroup(placement: .automatic) {
+                    Button(action: {}) { Label("피드백", systemImage: "bubble.left.and.bubble.right") }.buttonStyle(DesignSystem.toolbarButton())
+                    Button(action: {}) { Label("도움말", systemImage: "questionmark.circle") }.buttonStyle(DesignSystem.toolbarButton())
+                }
+            }
             // MARK: - Navigation Destinations
             .navigationDestination(for: AutoDeleteRule.self) { rule in
                 RuleDetailView(rule: rule)

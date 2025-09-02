@@ -32,38 +32,38 @@ struct AppLifecycleObserver: ViewModifier {
         // 1. 클립보드에서 현재 내용 가져오기
         guard let (clipboardString, clipboardData) = getCurrentClipboardContent() else { return }
 
-        do {
-            // 2. 가장 최근 항목 1개만 가져오도록 FetchDescriptor 설정
-            var descriptor = FetchDescriptor<ClipboardItem>()
-            descriptor.sortBy = [SortDescriptor(\.createdAt, order: .reverse)]
-            descriptor.fetchLimit = 1
-
-            // 3. 가장 최근 항목 조회
-            let mostRecentItem = try context.fetch(descriptor).first
-
-            // 4. 가장 최근 항목과 현재 클립보드 내용 비교 (중복 방지)
-            var isDuplicateOfLast = false
-            if let lastItem = mostRecentItem {
-                let stringsMatch = (clipboardString != nil && clipboardString == lastItem.content)
-                let dataMatch = (clipboardData != nil && clipboardData == lastItem.imageData)
-                if stringsMatch || dataMatch {
-                    isDuplicateOfLast = true
-                }
+        // --- 성능 개선 리팩토링 --- //
+        // 이전 로직: 앱이 활성화될 때마다 DB에서 마지막 아이템을 fetch하여 비교. (데이터가 많아지면 비효율적)
+        // 개선 로직: 마지막으로 '추가된' 아이템을 메모리(ClipboardState)에 저장하고, 현재 클립보드 내용과 비교.
+        //           이를 통해 불필요한 DB 조회를 없애고 앱 활성화 시 반응성을 높임.
+        
+        // 2. 메모리에 저장된 마지막 상태와 현재 클립보드 내용 비교 (중복 방지)
+        let isDuplicateOfLast: Bool = {
+            if let clipboardString {
+                return clipboardString == ClipboardState.shared.lastAddedContent
+            } else if let clipboardData {
+                return clipboardData == ClipboardState.shared.lastAddedImageData
+            } else {
+                return false
             }
+        }()
 
-            // 5. 중복되지 않을 경우에만 새 항목 추가
-            if !isDuplicateOfLast {
-                let smartType = SmartDetectionService.detect(from: clipboardString ?? "")
-                
-                let newItem = ClipboardItem(
-                    content: clipboardString, 
-                    imageData: clipboardData, 
-                    contentType: smartType
-                )
-                context.insert(newItem)
-            }
-        } catch {
-            print("⚠️ 최근 항목 조회 실패 (중복 검사): \(error)")
+        // 3. 중복되지 않을 경우에만 새 항목 추가
+        if !isDuplicateOfLast {
+            let smartType = SmartDetectionService.detect(from: clipboardString ?? "")
+            
+            let newItem = ClipboardItem(
+                content: clipboardString, 
+                imageData: clipboardData, 
+                contentType: smartType
+            )
+            context.insert(newItem)
+            
+            // 4. 마지막으로 추가된 상태를 메모리에 업데이트
+            ClipboardState.shared.lastAddedContent = clipboardString
+            ClipboardState.shared.lastAddedImageData = clipboardData
+            
+            print("✅ 새 클립보드 항목 추가: \(smartType.rawValue)")
         }
     }
     

@@ -27,6 +27,8 @@ struct iOSContentView: View {
                         Label("설정", systemImage: "gearshape.fill")
                     }
             }
+            .background(Color.primaryBackground) // iPhone 탭뷰 전체 배경
+            .tint(Color.accentColor) // 탭바 아이템 색상
         } else {
             // --- iPad 레이아웃 ---
             NavigationSplitView {
@@ -45,12 +47,17 @@ struct iOSContentView: View {
                 }
                 .listStyle(.sidebar)
                 .navigationTitle("클립보드")
+                .background(Color.primaryBackground) // iPad 사이드바 배경
+                .scrollContentBackground(.hidden) // iOS 16+ 리스트 배경 투명화
             } detail: {
                 ScrollView {
                     // 검색 및 라이브 텍스트 바
                     HStack {
                         TextField("검색...", text: .constant(""))
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.plain) // 기본 스타일 제거
+                            .padding(8)
+                            .background(Material.ultraThin)
+                            .cornerRadius(8)
                         Button(action: {}) { Image(systemName: "camera") }
                     }
                     .padding()
@@ -63,6 +70,7 @@ struct iOSContentView: View {
                     }
                     .padding(.horizontal)
                 }
+                .background(Color.primaryBackground) // iPad 상세 뷰 배경
             }
         }
     }

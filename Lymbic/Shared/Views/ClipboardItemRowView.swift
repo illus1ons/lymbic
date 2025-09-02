@@ -6,7 +6,7 @@ struct ClipboardItemRowView: View {
 
     var body: some View {
         HStack {
-            Image(systemName: icon(for: item.contentType))
+            Image(systemName: item.contentType.iconName)
                 .frame(width: 24)
                 .foregroundColor(.accentColor)
 
@@ -14,10 +14,11 @@ struct ClipboardItemRowView: View {
                 Text(item.content ?? "")
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .foregroundColor(.textColorPrimary)
                 if let source = item.sourceDevice {
                     Text("\(source)에서 \(item.createdAt, style: .relative) 복사됨")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Color.textColorSecondary)
                 }
             }
 
@@ -32,15 +33,7 @@ struct ClipboardItemRowView: View {
                     .foregroundColor(.yellow)
             }
         }
-        .padding(.vertical, 4)
-    }
-    
-    private func icon(for type: SmartContentType) -> String {
-        switch type {
-        case .none: return "text.quote"
-        case .url: return "link"
-        case .email: return "envelope"
-        case .phoneNumber: return "phone"
-        }
+        .padding(12) // 카드 내부 패딩
+        .modifier(DesignSystem.cardModifier()) // DesignSystem의 카드 스타일 적용
     }
 }

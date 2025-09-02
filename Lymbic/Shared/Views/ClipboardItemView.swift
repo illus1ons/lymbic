@@ -4,17 +4,6 @@ struct ClipboardItemView: View {
     let item: ClipboardItem
     var isCardStyle: Bool = false
     
-    // 아이콘
-    private var iconName: String {
-        // 이제 SmartContentType을 직접 사용합니다.
-        switch item.contentType {
-        case .none: return "text.quote.rtl"
-        case .url: return "link"
-        case .email: return "envelope.fill"
-        case .phoneNumber: return "phone.fill"
-        }
-    }
-    
     // 상대 시간
     private var relativeTime: String {
         let formatter = RelativeDateTimeFormatter()
@@ -35,7 +24,7 @@ struct ClipboardItemView: View {
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: iconName)
+            Image(systemName: item.contentType.iconName)
                 .foregroundColor(.accentColor)
                 .frame(width: 24, height: 24)
             

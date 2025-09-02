@@ -8,7 +8,7 @@ struct ClipboardItemCardView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 // 콘텐츠 타입 아이콘
-                Image(systemName: icon(for: item.contentType))
+                Image(systemName: item.contentType.iconName)
                     .font(.title3)
                     .foregroundColor(.accentColor)
                 Spacer()
@@ -28,6 +28,7 @@ struct ClipboardItemCardView: View {
                     .font(.body)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundColor(Color.textColorPrimary)
             }
 
             Spacer()
@@ -36,26 +37,16 @@ struct ClipboardItemCardView: View {
             HStack {
                 Text(item.createdAt, style: .relative)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color.textColorSecondary)
                 Spacer()
                 if let date = item.expiresAt {
                     CountdownBadge(expirationDate: date)
                 }
             }
         }
-        .padding()
+        .padding() // 카드 내부 패딩
         .frame(minWidth: 150, idealHeight: 120)
-        .background(Material.ultraThin)
-        .cornerRadius(12)
-    }
-    
-    private func icon(for type: SmartContentType) -> String {
-        switch type {
-        case .none: return "text.quote"
-        case .url: return "link"
-        case .email: return "envelope"
-        case .phoneNumber: return "phone"
-        }
+        .modifier(DesignSystem.cardModifier()) // DesignSystem의 카드 스타일 적용
     }
 }
 

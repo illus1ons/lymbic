@@ -38,10 +38,18 @@ struct PinnedItemsView: View {
                             }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden) // iOS 16+ 리스트 배경 투명화
+                    .background(Color.primaryBackground) // 리스트 전체 배경
                 }
             }
             .navigationTitle("📌 핀된 항목")
             .searchable(text: $searchText, prompt: "핀된 항목 검색")
+            .toolbar {
+                ToolbarItemGroup(placement: .automatic) {
+                    Button(action: {}) { Image(systemName: "magnifyingglass") }.buttonStyle(DesignSystem.toolbarButton())
+                    Button(action: {}) { Image(systemName: "camera") }.buttonStyle(DesignSystem.toolbarButton())
+                }
+            }
         }
     }
     
