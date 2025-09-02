@@ -97,7 +97,7 @@ struct PinnedItemsView: View {
             deleteItem(item)
         } label: {
             Label("삭제", systemImage: "trash")
-        }
+        }.tint(.red)
     }
     
     // MARK: - 로직

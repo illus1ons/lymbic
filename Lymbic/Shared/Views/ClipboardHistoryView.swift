@@ -7,6 +7,7 @@ import SwiftData
 struct ClipboardHistoryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \ClipboardItem.createdAt, order: .reverse) private var items: [ClipboardItem]
+    @State private var isCameraPresented = false
 
     private var pinnedItems: [ClipboardItem] { items.filter { $0.isPinned } }
     private var recentItems: [ClipboardItem] { items.filter { !$0.isPinned } }
@@ -64,8 +65,11 @@ struct ClipboardHistoryView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .automatic) {
                     Button(action: {}) { Image(systemName: "magnifyingglass") }.buttonStyle(DesignSystem.toolbarButton())
-                    Button(action: {}) { Image(systemName: "camera") }.buttonStyle(DesignSystem.toolbarButton())
+                    Button(action: { isCameraPresented.toggle() }) { Image(systemName: "camera") }.buttonStyle(DesignSystem.toolbarButton())
                 }
+            }
+            .sheet(isPresented: $isCameraPresented) {
+                LiveTextCameraView()
             }
         }
     }
@@ -114,13 +118,13 @@ struct ClipboardHistoryView: View {
         }.tint(.blue)
     }
     
-    @ViewBuilder
+        @ViewBuilder
     private func deleteButton(for item: ClipboardItem) -> some View {
         Button(role: .destructive) {
             deleteItem(item)
         } label: {
-            Label("Delete", systemImage: "trash")
-        }
+            Label("삭제", systemImage: "trash")
+        }.tint(.red)
     }
 
     // MARK: - Actions
@@ -144,8 +148,22 @@ struct ClipboardHistoryView: View {
     }
     
     private func copyToClipboard(_ item: ClipboardItem) {
-        // This function needs to be updated to handle SmartContentType
-        // For now, we focus on fixing the build error.
+        #if os(iOS)
+        let pasteboard = UIPasteboard.general
+        if let data = item.imageData {
+            pasteboard.image = UIImage(data: data)
+        } else if let content = item.content {
+            pasteboard.string = content
+        }
+        #elseif os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if let data = item.imageData, let image = NSImage(data: data) {
+            pasteboard.writeObjects([image])
+        } else if let content = item.content {
+            pasteboard.setString(content, forType: .string)
+        }
+        #endif
     }
 }
 
