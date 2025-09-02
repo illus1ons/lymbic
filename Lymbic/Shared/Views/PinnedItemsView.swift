@@ -26,9 +26,9 @@ struct PinnedItemsView: View {
                 if items.isEmpty {
                     emptyStateView
                 } else {
-                    // 그리드 뷰에서 리스트 뷰로 변경
                     List(filteredItems) { item in
-                        listRow(for: item)
+                        // `listRow` 대신 `ClipboardItemRowView`를 직접 사용하도록 구조 변경
+                        ClipboardItemRowView(item: item)
                             .swipeActions(edge: .leading) {
                                 unpinButton(for: item)
                             }
@@ -45,7 +45,7 @@ struct PinnedItemsView: View {
         }
     }
     
-    // MARK: - Subviews
+    // MARK: - 하위 뷰 (Subviews)
 
     @ViewBuilder
     private var emptyStateView: some View {
@@ -62,21 +62,15 @@ struct PinnedItemsView: View {
         }
         .padding()
     }
-
-    @ViewBuilder
-    private func listRow(for item: ClipboardItem) -> some View {
-        // ClipboardItemView가 스마트 액션을 포함하여 모든 것을 렌더링합니다.
-        ClipboardItemView(item: item, isCardStyle: false)
-    }
     
-    // MARK: - Swipe Action Buttons
+    // MARK: - 스와이프 액션 버튼
     
     @ViewBuilder
     private func unpinButton(for item: ClipboardItem) -> some View {
         Button {
             togglePin(item)
         } label: {
-            Label("Unpin", systemImage: "pin.slash.fill")
+            Label("핀 해제", systemImage: "pin.slash.fill")
         }.tint(.orange)
     }
     
@@ -85,7 +79,7 @@ struct PinnedItemsView: View {
         Button {
             copyToClipboard(item)
         } label: {
-            Label("Copy", systemImage: "doc.on.doc")
+            Label("복사", systemImage: "doc.on.doc")
         }.tint(.blue)
     }
     
@@ -94,11 +88,11 @@ struct PinnedItemsView: View {
         Button(role: .destructive) {
             deleteItem(item)
         } label: {
-            Label("Delete", systemImage: "trash")
+            Label("삭제", systemImage: "trash")
         }
     }
     
-    // MARK: - Actions
+    // MARK: - 로직
 
     private func togglePin(_ item: ClipboardItem) {
         item.isPinned.toggle()
@@ -114,24 +108,21 @@ struct PinnedItemsView: View {
         do {
             try context.save()
         } catch {
-            print("⚠️ Failed to save context: \(error)")
+            print("⚠️ 컨텍스트 저장 실패: \(error)")
         }
     }
     
     private func copyToClipboard(_ item: ClipboardItem) {
-        var stringToCopy: String? = nil
         #if os(iOS)
-        if item.contentType == .image, let data = item.imageData {
+        if let data = item.imageData {
             UIPasteboard.general.image = UIImage(data: data)
-            return
-        } else {
-            stringToCopy = item.content
+        } else if let content = item.content {
+            UIPasteboard.general.string = content
         }
-        UIPasteboard.general.string = stringToCopy
         #elseif os(macOS)
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        if item.contentType == .image, let data = item.imageData, let image = NSImage(data: data) {
+        if let data = item.imageData, let image = NSImage(data: data) {
             pasteboard.writeObjects([image])
         } else if let content = item.content {
             pasteboard.setString(content, forType: .string)
@@ -141,7 +132,7 @@ struct PinnedItemsView: View {
 }
 
 
-// MARK: - Previews
+// MARK: - 미리보기
 
 struct PinnedItemsView_Previews: PreviewProvider {
     @MainActor static var previews: some View {
@@ -149,9 +140,9 @@ struct PinnedItemsView_Previews: PreviewProvider {
         let container = try! ModelContainer(for: ClipboardItem.self, configurations: config)
         
         let sampleItems = [
-            ClipboardItem(content: "https://www.apple.com", contentType: .url, smartContentType: .url, isPinned: true),
-            ClipboardItem(content: "example@example.com", contentType: .text, smartContentType: .email, isPinned: true),
-            ClipboardItem(content: "This is a pinned text snippet for preview.", contentType: .text, isPinned: true)
+            ClipboardItem(content: "https://www.apple.com", contentType: .url, isPinned: true),
+            ClipboardItem(content: "example@example.com", contentType: .email, isPinned: true),
+            ClipboardItem(content: "미리보기용으로 핀된 텍스트입니다.", contentType: .none, isPinned: true)
         ]
         sampleItems.forEach { container.mainContext.insert($0) }
         

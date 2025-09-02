@@ -1,14 +1,7 @@
-//
-//  AppLifecycleObserver.swift
-//  Lymbic
-//
-//  Created by Gemini on 9/1/25.
-//
-
 import SwiftUI
 import SwiftData
 
-// MARK: - View Modifier
+// MARK: - 뷰 수정자 (View Modifier)
 
 struct AppLifecycleObserver: ViewModifier {
     @Environment(\.modelContext) private var context
@@ -33,11 +26,11 @@ struct AppLifecycleObserver: ViewModifier {
         #endif
     }
     
-    // MARK: - Actions
+    // MARK: - 로직
     
     private func checkClipboard() {
         // 1. 클립보드에서 현재 내용 가져오기
-        guard let (clipboardString, clipboardData, contentType) = getCurrentClipboardContent() else { return }
+        guard let (clipboardString, clipboardData) = getCurrentClipboardContent() else { return }
 
         do {
             // 2. 가장 최근 항목 1개만 가져오도록 FetchDescriptor 설정
@@ -48,7 +41,7 @@ struct AppLifecycleObserver: ViewModifier {
             // 3. 가장 최근 항목 조회
             let mostRecentItem = try context.fetch(descriptor).first
 
-            // 4. 가장 최근 항목과 현재 클립보드 내용 비교
+            // 4. 가장 최근 항목과 현재 클립보드 내용 비교 (중복 방지)
             var isDuplicateOfLast = false
             if let lastItem = mostRecentItem {
                 let stringsMatch = (clipboardString != nil && clipboardString == lastItem.content)
@@ -58,49 +51,43 @@ struct AppLifecycleObserver: ViewModifier {
                 }
             }
 
-            // 5. 가장 최근 항목과 중복되지 않을 경우에만 추가
+            // 5. 중복되지 않을 경우에만 새 항목 추가
             if !isDuplicateOfLast {
-                // 스마트 타입 감지
                 let smartType = SmartDetectionService.detect(from: clipboardString ?? "")
                 
                 let newItem = ClipboardItem(
                     content: clipboardString, 
                     imageData: clipboardData, 
-                    contentType: contentType, 
-                    smartContentType: smartType
+                    contentType: smartType
                 )
                 context.insert(newItem)
             }
         } catch {
-            print("⚠️ Failed to fetch recent item to check for duplicates: \(error)")
+            print("⚠️ 최근 항목 조회 실패 (중복 검사): \(error)")
         }
     }
     
-    private func getCurrentClipboardContent() -> (String?, Data?, ClipboardContentType)? {
+    private func getCurrentClipboardContent() -> (String?, Data?)? {
         #if os(iOS)
         let pasteboard = UIPasteboard.general
         if let string = pasteboard.string {
-            // Basic URL detection
-            let isURL = string.lowercased().hasPrefix("http://") || string.lowercased().hasPrefix("https://")
-            return (string, nil, isURL ? .url : .text)
+            return (string, nil)
         } else if let image = pasteboard.image {
-            return (nil, image.pngData(), .image)
+            return (nil, image.pngData())
         }
         #elseif os(macOS)
         let pasteboard = NSPasteboard.general
         if let string = pasteboard.string(forType: .string) {
-             // Basic URL detection
-            let isURL = string.lowercased().hasPrefix("http://") || string.lowercased().hasPrefix("https://")
-            return (string, nil, isURL ? .url : .text)
+            return (string, nil)
         }
-        // Reading image data from macOS pasteboard can be more complex
+        // macOS에서 이미지 데이터 읽기는 더 복잡할 수 있음
         #endif
         return nil
     }
     
     private func autoDeleteExpiredItems() {
         do {
-            // 1. Fetch items that could be expired (not pinned, has an expiry date)
+            // 1. 만료될 가능성이 있는 항목 조회 (핀 고정 안됨, 만료 날짜 있음)
             let potentialExpiredDescriptor = FetchDescriptor<ClipboardItem>(
                 predicate: #Predicate { !$0.isPinned && $0.expiresAt != nil }
             )
@@ -109,27 +96,27 @@ struct AppLifecycleObserver: ViewModifier {
             let now = Date()
             var itemsToDelete: [ClipboardItem] = []
 
-            // 2. Filter in memory
+            // 2. 메모리에서 필터링
             for item in potentialExpiredItems {
                 if let expiresAt = item.expiresAt, expiresAt <= now {
                     itemsToDelete.append(item)
                 }
             }
 
-            // 3. Delete expired items
+            // 3. 만료된 항목 삭제
             if !itemsToDelete.isEmpty {
                 for item in itemsToDelete {
                     context.delete(item)
                 }
-                print("✅ Auto-deleted \(itemsToDelete.count) expired items.")
+                print("✅ 만료된 항목 \(itemsToDelete.count)개 자동 삭제 완료.")
             }
         } catch {
-            print("⚠️ Auto-deletion failed: \(error)")
+            print("⚠️ 자동 삭제 실패: \(error)")
         }
     }
 }
 
-// MARK: - View Extension
+// MARK: - 뷰 확장 (View Extension)
 
 extension View {
     func withAppLifecycleObserver() -> some View {

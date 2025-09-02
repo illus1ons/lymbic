@@ -1,10 +1,3 @@
-//
-//  ClipboardItemView.swift
-//  Lymbic
-//
-//  Created by 유영배 on 8/31/25.
-//
-
 import SwiftUI
 
 struct ClipboardItemView: View {
@@ -13,18 +6,20 @@ struct ClipboardItemView: View {
     
     // 아이콘
     private var iconName: String {
+        // 이제 SmartContentType을 직접 사용합니다.
         switch item.contentType {
-        case .text: return "textformat"
+        case .none: return "text.quote.rtl"
         case .url: return "link"
-        case .image: return "photo"
-        case .otp: return "key"
+        case .email: return "envelope.fill"
+        case .phoneNumber: return "phone.fill"
         }
     }
     
     // 상대 시간
     private var relativeTime: String {
-        RelativeDateTimeFormatter()
-            .localizedString(for: item.createdAt, relativeTo: Date())
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        return formatter.localizedString(for: item.createdAt, relativeTo: Date())
     }
     
     // 자동 삭제 텍스트
@@ -45,31 +40,23 @@ struct ClipboardItemView: View {
                 .frame(width: 24, height: 24)
             
             VStack(alignment: .leading, spacing: 4) {
-                // 텍스트/URL vs 이미지
-                if item.contentType == .image, let data = item.imageData {
-                    #if os(iOS)
+                // 이미지 vs 텍스트/URL
+                if let data = item.imageData {
+                    #if canImport(UIKit)
                     if let uiImage = UIImage(data: data) {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFit()
                             .frame(height: 100)
                             .cornerRadius(8)
-                    } else {
-                        Text("[이미지 없음]")
-                            .font(.body)
-                            .foregroundColor(.secondary)
                     }
-                    #elseif os(macOS)
+                    #elseif canImport(AppKit)
                     if let nsImage = NSImage(data: data) {
                         Image(nsImage: nsImage)
                             .resizable()
                             .scaledToFit()
                             .frame(height: 100)
                             .cornerRadius(8)
-                    } else {
-                        Text("[이미지 없음]")
-                            .font(.body)
-                            .foregroundColor(.secondary)
                     }
                     #endif
                 } else {
@@ -89,8 +76,8 @@ struct ClipboardItemView: View {
                 }
                 
                 // 스마트 액션 버튼 표시
-                if let smartType = item.smartContentType, smartType != .none {
-                    smartActionsView(for: item, type: smartType)
+                if item.contentType != .none {
+                    smartActionsView(for: item, type: item.contentType)
                         .padding(.top, 4)
                 }
             }
@@ -118,34 +105,23 @@ struct ClipboardItemView: View {
             HStack {
                 switch type {
                 case .email:
-                    if let email = item.content {
-                        Button("메일 보내기", systemImage: "envelope") {
-                            // Action: open mail client
-                        }
-                        Button("주소 복사", systemImage: "doc.on.doc") {
-                            // Action: copy email address
-                        }
+                    // 경고 해결: 변수를 사용하지 않으므로 nil 체크만 수행
+                    if item.content != nil {
+                        Button("메일 보내기", systemImage: "envelope") { /* 액션 */ }
+                        Button("주소 복사", systemImage: "doc.on.doc") { /* 액션 */ }
                     }
                 case .phoneNumber:
-                    if let number = item.content {
-                        Button("전화 걸기", systemImage: "phone") {
-                            // Action: initiate call
-                        }
-                        Button("메시지 보내기", systemImage: "message") {
-                            // Action: open messages app
-                        }
+                    // 경고 해결: 변수를 사용하지 않으므로 nil 체크만 수행
+                    if item.content != nil {
+                        Button("전화 걸기", systemImage: "phone") { /* 액션 */ }
+                        Button("메시지 보내기", systemImage: "message") { /* 액션 */ }
                     }
                 case .url:
-                    if let urlString = item.content, let url = URL(string: urlString) {
-                        Button("URL 열기", systemImage: "safari") {
-                            // Action: open URL
-                        }
-                        Button("QR 코드 생성", systemImage: "qrcode") {
-                            // Action: generate QR code
-                        }
+                    if let urlString = item.content, let _ = URL(string: urlString) {
+                        Button("URL 열기", systemImage: "safari") { /* 액션 */ }
+                        Button("QR 코드 생성", systemImage: "qrcode") { /* 액션 */ }
                     }
                 case .none:
-                    // 아무것도 표시하지 않음
                     EmptyView()
                 }
             }

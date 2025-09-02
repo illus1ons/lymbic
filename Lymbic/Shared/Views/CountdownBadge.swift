@@ -1,37 +1,37 @@
-//
-//  CountdownBadge.swift
-//  Lymbic
-//
-//  Created by 유영배 on 8/31/25.
-//
-
 import SwiftUI
 
 struct CountdownBadge: View {
-    let expiresAt: Date
-    @State private var now = Date()
-    
-    var remainingText: String {
-        let interval = Int(expiresAt.timeIntervalSince(now))
-        if interval > 0 {
-            return "⏰ \(interval / 60)분 후"
-        } else {
-            return "만료됨"
-        }
+    let expirationDate: Date
+    @State private var timeRemaining: TimeInterval
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    init(expirationDate: Date) {
+        self.expirationDate = expirationDate
+        _timeRemaining = State(initialValue: expirationDate.timeIntervalSinceNow)
     }
-    
+
     var body: some View {
-        Text(remainingText)
-            .font(.caption2)
-            .padding(6)
-            .background(Color.red.opacity(0.1))
-            .foregroundColor(.red)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .onAppear {
-                // 1분마다 갱신
-                Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
-                    now = Date()
-                }
+        Text(timeString(time: timeRemaining))
+            .font(.caption.monospacedDigit())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Material.ultraThin)
+            .clipShape(Capsule())
+            .foregroundColor(timeRemaining < 60 ? .red : .secondary)
+            .onReceive(timer) { _ in
+                self.timeRemaining = expirationDate.timeIntervalSinceNow
             }
+            .onDisappear {
+                timer.upstream.connect().cancel()
+            }
+    }
+
+    private func timeString(time: TimeInterval) -> String {
+        if time <= 0 {
+            return "0:00"
+        }
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }
